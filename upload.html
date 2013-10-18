@@ -1,0 +1,90 @@
+<html>
+<head>
+<title>AJAX Upload Example</title>
+<script language="javascript">
+var upload_post_url = "upload_post.php"; // url to receive the uploaded file
+
+var uploadFile = function(file, callback_start, callback_progress, callback_done) {
+	if (file) {
+		var xhr = new XMLHttpRequest(), upload = xhr.upload;
+		upload.addEventListener("progress", function (ev) {
+				// called when upload progress is updated
+				if (callback_progress)
+					callback_progress(ev.loaded, ev.total);
+			}, false);
+		// TODO: handle error properly
+		upload.addEventListener("error", function (ev) {console.log(ev);}, false);
+		xhr.onreadystatechange = function (ev) {
+				// called when the state of XMLHttpRequest changes
+				if (xhr.readyState == 4) { // finished
+					if (callback_done)
+						callback_done(xhr.status, xhr.responseText);
+				}
+			};
+		// build request data
+		var data = new FormData();
+		data.append("file1", file);
+		// send http POST request
+		xhr.open("POST", upload_post_url, true);
+		xhr.setRequestHeader("Cache-Control", "no-cache");
+		xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+		xhr.setRequestHeader("X-File-Name", escape(file.name));
+		xhr.send(data);
+		// inform the caller
+		if (callback_start)
+			callback_start();
+	}
+}
+
+var fileInputChanged = function() {
+	var prog = document.getElementById("progress");
+	var fileInput = document.getElementById("fileInput");
+	prog.innerHTML = "file: " + fileInput.files[0].name;
+}
+
+var uploadButtonClicked = function() {
+	var fileInput = document.getElementById("fileInput");
+	var prog = document.getElementById("progress");
+	var inputForm = document.getElementById("inputForm");
+	uploadFile(fileInput.files[0],
+			function() { // callback: start upload
+				prog.innerHTML = "uploading...";
+				inputForm.style["visibility"] = "collapse"; // hide upload form
+			},
+			function(bytes_sent, bytes_total) { // callback: update progress
+				updateProgress(bytes_sent, bytes_total);
+			},
+			function(status, response) { // callback: finished
+				if (status == 200) { // OK
+					prog.innerHTML = "upload finished";
+				} else { // error
+					prog.innerHTML = "upload failed: " + response;
+				}
+				inputForm.style["visibility"] = "visible"; // show upload form
+			}
+		);
+}
+
+var updateProgress = function(bytes_sent, bytes_total) {
+	var prog = document.getElementById("progress");
+	prog.innerHTML = "uploading " + humanReadableSize(bytes_sent)
+		+ "/" + humanReadableSize(bytes_total)
+		+ " (" + Math.floor(100 * bytes_sent / bytes_total) + "%) ...";
+}
+
+var humanReadableSize = function(bytes) {
+	return Math.floor(bytes / 1000) + "kb";
+}
+</script>
+</head>
+<body>
+<form>
+	<h4>AJAX Upload Example</h4>
+	<div id="inputForm">
+		Select a file: <input type="file" onchange="fileInputChanged()" id="fileInput"/><br/><br/>
+		<input type="button" onclick="uploadButtonClicked()" value="Upload" id="uploadButton"/>
+	</div>
+	<div id="progress">waiting for file</div><br/>
+</form>
+</body>
+</html>
